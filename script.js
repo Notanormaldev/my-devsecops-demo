@@ -25,7 +25,7 @@ const API_KEY='wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY'
 
 function getConfig() {
   return {
-    apiKey: AWS_ACCESS_KEY_ID,
+    apiKey: API_KEY,
     region: "us-east-1"
   };
 }
