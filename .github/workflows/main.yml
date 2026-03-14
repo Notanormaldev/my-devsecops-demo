@@ -2,7 +2,7 @@ name: SecureFlow DevSecOps Pipeline
 on:
   push:
     branches: [main]
-    workflow_dispatch:
+  workflow_dispatch:
 jobs:
   secret_scan:
     runs-on: ubuntu-latest
