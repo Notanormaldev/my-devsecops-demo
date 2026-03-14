@@ -17,7 +17,7 @@ const GITHUB_TOKEN = "ghp_exampleFakeToken1234567890abcdef";
 
 // Fake Stripe Key
 const STRIPE_KEY = "sk_test_examplefakestripekey1234567890";
-
+const API_KEY='wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY'
 // =============================================
 // NOTE: Yeh sab FAKE keys hain — sirf
 // GitLeaks scanner ko trigger karne ke liye
