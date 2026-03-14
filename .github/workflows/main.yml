@@ -1,87 +1,181 @@
+
 name: SecureFlow DevSecOps Pipeline
+
 on:
   push:
     branches: [main]
-  workflow_dispatch:
+
 jobs:
+
+# -------------------------------
+# 1. Secret Scanning
+# -------------------------------
   secret_scan:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: gitleaks/gitleaks-action@v2
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Run GitLeaks Secret Scan
+        uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+# -------------------------------
+# 2. Detect Project Technology
+# -------------------------------
   detect_technology:
     needs: secret_scan
     runs-on: ubuntu-latest
     outputs:
       project_type: ${{ steps.detect.outputs.project_type }}
+
     steps:
-      - uses: actions/checkout@v4
-      - id: detect
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Detect Technology
+        id: detect
         run: |
-          if [ -f "requirements.txt" ]; then echo "project_type=python" >> $GITHUB_OUTPUT
-          elif [ -f "package.json" ]; then echo "project_type=node" >> $GITHUB_OUTPUT
-          elif [ -f "pom.xml" ]; then echo "project_type=java" >> $GITHUB_OUTPUT
-          elif [ -f "index.html" ]; then echo "project_type=static" >> $GITHUB_OUTPUT
-          else echo "project_type=unknown" >> $GITHUB_OUTPUT; fi
+          if [ -f "requirements.txt" ]; then
+            echo "project_type=python" >> $GITHUB_OUTPUT
+          elif [ -f "package.json" ]; then
+            echo "project_type=node" >> $GITHUB_OUTPUT
+          elif [ -f "pom.xml" ]; then
+            echo "project_type=java" >> $GITHUB_OUTPUT
+          elif [ -f "index.html" ]; then
+            echo "project_type=static" >> $GITHUB_OUTPUT
+          else
+            echo "project_type=unknown" >> $GITHUB_OUTPUT
+          fi
+
+# -------------------------------
+# 3. Dependency Vulnerability Scan
+# -------------------------------
   dependency_scan:
     needs: detect_technology
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
-      - if: needs.detect_technology.outputs.project_type == 'node'
+
+      - name: Run Node Dependency Scan
+        if: needs.detect_technology.outputs.project_type == 'node'
         run: npm audit || true
-      - if: needs.detect_technology.outputs.project_type == 'python'
-        run: pip install safety && safety check || true
+
+      - name: Run Python Dependency Scan
+        if: needs.detect_technology.outputs.project_type == 'python'
+        run: |
+          pip install safety
+          safety check || true
+
+# -------------------------------
+# 4. Static Code Security Scan
+# -------------------------------
   static_security_scan:
     needs: dependency_scan
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
-      - if: needs.detect_technology.outputs.project_type == 'python'
-        run: pip install bandit && bandit -r .
+
+      - name: Python Security Scan (Bandit)
+        if: needs.detect_technology.outputs.project_type == 'python'
+        run: |
+          pip install bandit
+          bandit -r .
+
+# -------------------------------
+# 5. File Verification
+# -------------------------------
   verify_files:
     needs: static_security_scan
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
-      - run: |
-          if [ -f index.html ]; then echo "found"; fi
-          if [ -f style.css ]; then echo "found"; fi
-          if [ -f script.js ]; then echo "found"; fi
+
+      - name: Verify Required Files
+        run: |
+          echo "Checking required files..."
+          if [ -f index.html ]; then echo "index.html found"; fi
+          if [ -f style.css ]; then echo "style.css found"; fi
+          if [ -f script.js ]; then echo "script.js found"; fi
+
+# -------------------------------
+# 6. Validation Stage
+# -------------------------------
   validation:
     needs: verify_files
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
-      - run: ls -la
+
+      - name: Run Validation
+        run: |
+          echo "Running validation..."
+          ls -la
+          echo "Validation completed"
+
+# -------------------------------
+# 7. Testing Stage
+# -------------------------------
   test:
     needs: validation
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
-      - run: grep "<html>" index.html || true
+
+      - name: Run Basic Tests
+        run: |
+          echo "Running tests..."
+          grep "<html" index.html || true
+          echo "Tests completed"
+
+# -------------------------------
+# 8. Setup GitHub Pages
+# -------------------------------
   setup_pages:
     needs: test
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/configure-pages@v4
-  upload:
-    needs: setup_pages
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: .
-  deploy:
-    needs: upload
     runs-on: ubuntu-latest
     permissions:
       pages: write
       id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      contents: read
+
     steps:
-      - uses: actions/deploy-pages@v4
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+# -------------------------------
+# 9. Upload Site Artifact
+# -------------------------------
+  upload:
+    needs: setup_pages
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Upload Pages Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+# -------------------------------
+# 10. Deploy Website
+# -------------------------------
+  deploy:
+    needs: upload
+    runs-on: ubuntu-latest
+
+    permissions:
+      pages: write
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v4
