@@ -1,0 +1,12 @@
+{
+  "name": "secureflow-demo",
+  "version": "1.0.0",
+  "description": "Demo project for DevSecOps pipeline",
+  "scripts": {
+    "test": "echo 'No JS tests configured' && exit 0"
+  },
+  "dependencies": {
+    "lodash": "4.17.21"
+  },
+  "devDependencies": {}
+}
